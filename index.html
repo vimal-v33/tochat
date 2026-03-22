@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToChat — Real-Time E2E Encrypted</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep:    #040c11;
+  --bg-panel:   #07151f;
+  --bg-card:    #0b1c28;
+  --bg-input:   #0e2030;
+  --border:     #163347;
+  --border-hi:  #1c5070;
+  --teal:       #00c9b0;
+  --teal-dim:   #00796a;
+  --blue:       #1a8fff;
+  --blue-dim:   #0d5ccc;
+  --green:      #00e8a2;
+  --green-dim:  #009966;
+  --text-1:     #cceee6;
+  --text-2:     #5fa090;
+  --text-3:     #2e5c50;
+  --bubble-me:  linear-gradient(135deg, #004470 0%, #005f58 100%);
+  --bubble-them:#0b1c28;
+  --online:     #00e8a2;
+  --away:       #f59e0b;
+  --r: 14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+
+body{
+  font-family:'Syne',sans-serif;
+  background:var(--bg-deep);
+  color:var(--text-1);
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── NOISE OVERLAY ── */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9999;opacity:.4;
+}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{
+  position:fixed;inset:0;
+  background:var(--bg-deep);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;
+  animation:fadeIn .4s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.login-box{
+  background:var(--bg-panel);
+  border:1px solid var(--border-hi);
+  border-radius:20px;
+  padding:40px 36px;
+  width:360px;
+  box-shadow:0 0 60px rgba(0,201,176,0.1);
+}
+.login-logo{
+  width:56px;height:56px;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  margin:0 auto 16px;
+  box-shadow:0 0 30px rgba(0,201,176,0.35);
+}
+.login-title{
+  text-align:center;
+  font-size:26px;font-weight:800;
+  background:linear-gradient(90deg,var(--teal),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  margin-bottom:4px;
+}
+.login-sub{
+  text-align:center;
+  font-family:'Space Mono',monospace;
+  font-size:10px;color:var(--text-3);
+  letter-spacing:1.5px;margin-bottom:28px;
+}
+.field-label{font-size:11px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+.login-input{
+  width:100%;
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:11px 14px;
+  color:var(--text-1);
+  font-family:'Syne',sans-serif;font-size:14px;
+  outline:none;margin-bottom:16px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.login-input:focus{border-color:var(--teal-dim);box-shadow:0 0 0 3px rgba(0,201,176,0.1);}
+.login-input::placeholder{color:var(--text-3);}
+.login-btn{
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  border:none;border-radius:11px;
+  color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;
+  box-shadow:0 4px 20px rgba(0,201,176,0.3);
+  transition:transform .15s,box-shadow .15s;
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(0,201,176,0.45);}
+.login-btn:active{transform:scale(.98);}
+.login-note{
+  text-align:center;margin-top:14px;
+  font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);
+  line-height:1.6;
+}
+.login-err{
+  background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);
+  border-radius:8px;padding:8px 12px;
+  font-size:12px;color:#ff7070;text-align:center;
+  margin-bottom:14px;display:none;
+}
+
+/* ── APP SHELL ── */
+#appShell{
+  display:none;flex:1;overflow:hidden;
+  flex-direction:row;
+}
+#appShell.visible{display:flex;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:290px;min-width:290px;
+  background:var(--bg-panel);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:relative;
+}
+.sidebar-head{
+  padding:18px 16px 14px;
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.brand-logo{
+  width:34px;height:34px;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:17px;box-shadow:0 0 16px rgba(0,201,176,.4);flex-shrink:0;
+}
+.brand-name{
+  font-size:19px;font-weight:800;
+  background:linear-gradient(90deg,var(--teal),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.brand-enc{
+  font-family:'Space Mono',monospace;font-size:8.5px;
+  color:var(--teal-dim);
+  background:rgba(0,201,176,.07);border:1px solid rgba(0,201,176,.18);
+  border-radius:20px;padding:2px 7px;display:inline-flex;align-items:center;gap:4px;
+}
+.search-wrap{position:relative;}
+.search-wrap input{
+  width:100%;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:9px;padding:8px 11px 8px 32px;
+  color:var(--text-1);font-family:'Syne',sans-serif;font-size:13px;outline:none;
+  transition:border-color .2s;
+}
+.search-wrap input:focus{border-color:var(--teal-dim);}
+.search-wrap input::placeholder{color:var(--text-3);}
+.search-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:13px;pointer-events:none;}
+
+.contacts{flex:1;overflow-y:auto;padding:10px 0 4px;}
+.contacts::-webkit-scrollbar{width:3px;}
+.contacts::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sec-label{
+  font-family:'Space Mono',monospace;font-size:8.5px;
+  color:var(--text-3);letter-spacing:2px;padding:0 16px 7px;
+}
+
+.contact{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 16px;cursor:pointer;
+  transition:background .15s;position:relative;
+}
+.contact:hover{background:rgba(0,201,176,.05);}
+.contact.active{background:rgba(0,201,176,.09);}
+.contact.active::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--teal),var(--green));
+  border-radius:0 3px 3px 0;
+}
+
+.av{position:relative;flex-shrink:0;}
+.av-img{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;
+}
+.av-t{background:linear-gradient(135deg,#004d44,#003a60);color:#00e8a2;}
+.av-b{background:linear-gradient(135deg,#003a60,#001a4a);color:#1a8fff;}
+.av-g{background:linear-gradient(135deg,#00502e,#003318);color:#00e8a2;}
+.av-c{background:linear-gradient(135deg,#004855,#001833);color:#00c9c9;}
+.av-i{background:linear-gradient(135deg,#18186a,#0a0038);color:#7070ff;}
+
+.sdot{
+  position:absolute;bottom:1px;right:1px;
+  width:9px;height:9px;border-radius:50%;
+  border:2px solid var(--bg-panel);
+}
+.sdot.on{background:var(--online);box-shadow:0 0 5px var(--online);}
+.sdot.off{background:#2a3a44;}
+
+.c-info{flex:1;min-width:0;}
+.c-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.c-prev{font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.c-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.c-time{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--text-3);}
+.unread{
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  color:#fff;font-size:9px;font-weight:700;
+  min-width:17px;height:17px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+}
+
+.sb-foot{
+  padding:12px 16px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:9px;
+  background:rgba(4,12,17,.6);
+}
+.me-av{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,#004470,#005f58);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:12px;
+  border:2px solid var(--teal-dim);flex-shrink:0;
+}
+.me-inf{flex:1;}
+.me-name{font-size:12.5px;font-weight:700;}
+.me-status{font-size:10.5px;color:var(--teal);display:flex;align-items:center;gap:4px;}
+.me-status::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--teal);display:inline-block;}
+.ib{
+  width:28px;height:28px;border-radius:7px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  transition:all .15s;
+}
+.ib:hover{background:rgba(0,201,176,.1);border-color:var(--teal-dim);color:var(--teal);}
+
+/* ── CHAT PANEL ── */
+.chat{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+.chat-head{
+  padding:13px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:11px;
+  background:var(--bg-panel);
+}
+.ch-info{flex:1;}
+.ch-name{font-size:15px;font-weight:800;}
+.ch-status{font-size:11.5px;color:var(--teal);display:flex;align-items:center;gap:5px;min-height:16px;}
+.typing-dots{display:flex;gap:3px;align-items:center;}
+.td{width:4px;height:4px;border-radius:50%;background:var(--teal);animation:tb 1.2s infinite;}
+.td:nth-child(2){animation-delay:.2s;}
+.td:nth-child(3){animation-delay:.4s;}
+@keyframes tb{0%,80%,100%{transform:translateY(0);opacity:.35;}40%{transform:translateY(-4px);opacity:1;}}
+
+.head-actions{display:flex;align-items:center;gap:8px;}
+.enc-pill{
+  display:flex;align-items:center;gap:5px;
+  font-family:'Space Mono',monospace;font-size:9px;
+  color:var(--teal);
+  background:rgba(0,201,176,.08);border:1px solid rgba(0,201,176,.2);
+  border-radius:20px;padding:4px 10px;
+  animation:glow 3s ease-in-out infinite;
+}
+@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(0,201,176,.2);}50%{box-shadow:0 0 14px rgba(0,201,176,.4);}}
+.enc-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+.fp-bar{
+  padding:6px 18px;
+  background:rgba(0,201,176,.04);
+  border-bottom:1px solid rgba(0,201,176,.12);
+  font-family:'Space Mono',monospace;font-size:9.5px;
+  color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.fp-bar b{color:var(--teal-dim);}
+
+/* Empty state */
+.no-chat{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;color:var(--text-3);
+  font-family:'Space Mono',monospace;font-size:12px;text-align:center;
+}
+.no-chat-icon{font-size:48px;opacity:.25;}
+
+/* Messages */
+.msgs{
+  flex:1;overflow-y:auto;padding:18px 22px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.msgs::-webkit-scrollbar{width:4px;}
+.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.date-div{text-align:center;margin:10px 0;position:relative;}
+.date-div::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border);}
+.date-div span{
+  font-family:'Space Mono',monospace;font-size:9.5px;color:var(--text-3);
+  background:var(--bg-deep);padding:0 10px;position:relative;letter-spacing:1px;
+}
+
+.sys{
+  align-self:center;
+  font-family:'Space Mono',monospace;font-size:9.5px;
+  color:var(--text-3);
+  background:rgba(0,201,176,.05);border:1px solid rgba(0,201,176,.1);
+  border-radius:20px;padding:5px 13px;margin:5px 0;text-align:center;
+}
+
+.row{display:flex;margin-bottom:1px;animation:mi .22s ease;}
+@keyframes mi{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+.row.me{justify-content:flex-end;}
+.row.them{justify-content:flex-start;}
+
+.bubble{
+  max-width:66%;padding:9px 13px;
+  font-size:13.5px;line-height:1.55;word-break:break-word;
+  position:relative;
+}
+.row.me .bubble{
+  background:var(--bubble-me);
+  border-radius:16px 16px 4px 16px;
+  color:#d8f0ec;
+}
+.row.them .bubble{
+  background:var(--bubble-them);
+  border:1px solid var(--border);
+  border-radius:16px 16px 16px 4px;
+  color:var(--text-1);
+}
+.msg-time{
+  font-family:'Space Mono',monospace;font-size:9px;
+  margin-top:4px;display:flex;align-items:center;gap:3px;
+}
+.row.me .msg-time{color:rgba(180,230,220,.45);justify-content:flex-end;}
+.row.them .msg-time{color:var(--text-3);}
+.tick{font-size:10px;}
+.tick.r{color:var(--teal);}
+
+/* Input */
+.input-zone{
+  padding:12px 18px;
+  background:var(--bg-panel);
+  border-top:1px solid var(--border);
+  display:flex;align-items:flex-end;gap:9px;
+}
+.inp-wrap{
+  flex:1;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:13px;
+  display:flex;align-items:flex-end;padding:8px 11px;gap:7px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.inp-wrap:focus-within{border-color:var(--teal-dim);box-shadow:0 0 0 2px rgba(0,201,176,.1);}
+.msg-inp{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text-1);font-family:'Syne',sans-serif;font-size:13.5px;
+  resize:none;max-height:110px;min-height:22px;line-height:1.5;
+}
+.msg-inp::placeholder{color:var(--text-3);}
+.send-btn{
+  width:38px;height:38px;border-radius:11px;border:none;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+  flex-shrink:0;
+  box-shadow:0 4px 16px rgba(0,201,176,.3);
+  transition:transform .14s,box-shadow .14s;
+}
+.send-btn:hover{transform:scale(1.06);box-shadow:0 6px 22px rgba(0,201,176,.45);}
+.send-btn:active{transform:scale(.96);}
+.send-btn:disabled{opacity:.4;cursor:default;transform:none;}
+
+/* Connection status bar */
+.conn-bar{
+  padding:5px 12px;
+  font-family:'Space Mono',monospace;font-size:10px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:all .3s;
+}
+.conn-bar.connecting{background:rgba(245,158,11,.1);color:#f59e0b;border-bottom:1px solid rgba(245,158,11,.2);}
+.conn-bar.connected{background:rgba(0,232,162,.07);color:var(--teal);border-bottom:1px solid rgba(0,232,162,.15);animation:fadeout 3s 2s forwards;}
+.conn-bar.error{background:rgba(255,60,60,.1);color:#ff7070;border-bottom:1px solid rgba(255,60,60,.2);}
+@keyframes fadeout{to{max-height:0;padding:0;opacity:0;overflow:hidden;}}
+.conn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.conn-bar.connecting .conn-dot{background:#f59e0b;animation:pulse .8s infinite;}
+.conn-bar.connected .conn-dot{background:var(--teal);}
+.conn-bar.error .conn-dot{background:#ff7070;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">💬</div>
+    <div class="login-title">ToChat</div>
+    <div class="login-sub">🔐 REAL-TIME · END-TO-END ENCRYPTED</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="field-label">Your display name</div>
+    <input class="login-input" id="usernameInput" placeholder="e.g. Aria, Dev, Sofia…" maxlength="24" autocomplete="off">
+    <div class="field-label">Server URL</div>
+    <input class="login-input" id="serverInput" value="" autocomplete="off">
+    <button class="login-btn" onclick="connect()">Generate Keys & Connect →</button>
+    <div class="login-note">
+      🔑 An ECDH key pair is generated in your browser.<br>
+      The server <strong>never</strong> sees your private key or plaintext.
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="brand">
+        <div class="brand-logo">💬</div>
+        <div>
+          <div class="brand-name">ToChat</div>
+          <span class="brand-enc">🔒 E2E ENCRYPTED</span>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <span class="search-ico">⌕</span>
+        <input type="text" id="searchBox" placeholder="Search users…" oninput="filterUsers(this.value)">
+      </div>
+    </div>
+    <div class="contacts" id="userList">
+      <div class="sec-label">ONLINE</div>
+      <div style="padding:16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">
+        Waiting for others to join…
+      </div>
+    </div>
+    <div class="sb-foot">
+      <div class="me-av" id="myAvatar">?</div>
+      <div class="me-inf">
+        <div class="me-name" id="myName">—</div>
+        <div class="me-status">Encrypted</div>
+      </div>
+      <button class="ib" title="Copy my public key" onclick="copyMyKey()">🔑</button>
+      <button class="ib" title="Disconnect" onclick="disconnect()">⏏️</button>
+    </div>
+  </aside>
+
+  <main class="chat" id="chatMain">
+    <div id="connBar" class="conn-bar connecting">
+      <div class="conn-dot"></div><span id="connMsg">Connecting…</span>
+    </div>
+    <div class="no-chat" id="noChat">
+      <div class="no-chat-icon">🔐</div>
+      <div>Select a user to start<br>an encrypted conversation</div>
+      <div style="font-size:9px;margin-top:6px;color:var(--text-3);">Keys exchange happens automatically</div>
+    </div>
+    <div id="activeChatWrap" style="display:none;flex:1;flex-direction:column;overflow:hidden;display:none;">
+      <div class="chat-head">
+        <div class="av">
+          <div class="av-img av-t" id="chatAv">?</div>
+          <div class="sdot on" id="chatDot"></div>
+        </div>
+        <div class="ch-info">
+          <div class="ch-name" id="chatName">—</div>
+          <div class="ch-status" id="chatStatus">Online</div>
+        </div>
+        <div class="head-actions">
+          <div class="enc-pill"><div class="enc-dot"></div>E2E ENCRYPTED</div>
+          <button class="ib" title="Verify keys" onclick="showFingerprint()">🛡️</button>
+        </div>
+      </div>
+      <div class="fp-bar" id="fpBar">
+        🔑 Session key fingerprint: <b id="fpText">—</b>
+      </div>
+      <div class="msgs" id="msgsArea"></div>
+      <div class="input-zone">
+        <div class="inp-wrap">
+          <textarea class="msg-inp" id="msgInput" placeholder="Type an encrypted message…" rows="1"
+            onkeydown="onKey(event)" oninput="onTyping();autoResize(this)"></textarea>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// Auto-detect server URL (works on Railway, Glitch, localhost)
+window.addEventListener('DOMContentLoaded', () => {
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const protocol = isLocal ? 'ws' : 'wss';
+  document.getElementById('serverInput').value = protocol + '://' + location.host;
+});
+
+// ═══════════════════════════════════════════════
+//  CRYPTO ENGINE — Web Crypto API (ECDH + AES-GCM)
+// ═══════════════════════════════════════════════
+const Crypto = {
+  myKeyPair: null,      // { privateKey, publicKey }
+  sharedKeys: {},       // username → CryptoKey (AES-GCM)
+  publicKeyCache: {},   // username → raw JWK string
+
+  async generateKeyPair() {
+    this.myKeyPair = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true, ['deriveKey']
+    );
+    return this.myKeyPair;
+  },
+
+  async exportPublicKey() {
+    const jwk = await crypto.subtle.exportKey('jwk', this.myKeyPair.publicKey);
+    return JSON.stringify(jwk);
+  },
+
+  async importPublicKey(jwkStr) {
+    const jwk = typeof jwkStr === 'string' ? JSON.parse(jwkStr) : jwkStr;
+    return crypto.subtle.importKey(
+      'jwk', jwk,
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true, []
+    );
+  },
+
+  async deriveSharedKey(theirPublicKeyJwk) {
+    const theirKey = await this.importPublicKey(theirPublicKeyJwk);
+    return crypto.subtle.deriveKey(
+      { name: 'ECDH', public: theirKey },
+      this.myKeyPair.privateKey,
+      { name: 'AES-GCM', length: 256 },
+      false, ['encrypt', 'decrypt']
+    );
+  },
+
+  async getSharedKey(username, theirPublicKey) {
+    if (!this.sharedKeys[username]) {
+      this.sharedKeys[username] = await this.deriveSharedKey(theirPublicKey);
+    }
+    return this.sharedKeys[username];
+  },
+
+  async encrypt(username, plaintext) {
+    const key = this.sharedKeys[username];
+    if (!key) throw new Error('No shared key for ' + username);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(plaintext);
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    return {
+      encryptedPayload: bufToB64(cipherBuf),
+      iv: bufToB64(iv.buffer),
+    };
+  },
+
+  async decrypt(username, encryptedPayload, iv) {
+    const key = this.sharedKeys[username];
+    if (!key) throw new Error('No shared key for ' + username);
+    const cipherBuf = b64ToBuf(encryptedPayload);
+    const ivBuf = b64ToBuf(iv);
+    const plainBuf = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(ivBuf) }, key, cipherBuf
+    );
+    return new TextDecoder().decode(plainBuf);
+  },
+
+  async fingerprint(username) {
+    const theirKey = this.publicKeyCache[username];
+    if (!theirKey) return '—';
+    const myPub = await this.exportPublicKey();
+    const combined = [myPub, theirKey].sort().join('|');
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combined));
+    const hex = Array.from(new Uint8Array(buf))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+    return hex.match(/.{2}/g).slice(0,8).join(':');
+  },
+};
+
+function bufToB64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function b64ToBuf(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let ws = null;
+let myUsername = '';
+let myPublicKey = '';
+let activeChat = null;        // username
+let onlineUsers = {};         // username → publicKey
+let chatHistories = {};       // username → [{from,text,time,isMe}]
+let typingTimers = {};
+let typingTimeout = null;
+let isTypingSent = false;
+
+const AV_COLORS = ['av-t','av-b','av-g','av-c','av-i'];
+function avColor(name) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % AV_COLORS.length;
+  return AV_COLORS[h];
+}
+function initials(name) { return name.slice(0,2).toUpperCase(); }
+function timestamp() {
+  return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+}
+
+// ═══════════════════════════════════════════════
+//  CONNECT
+// ═══════════════════════════════════════════════
+async function connect() {
+  const usernameEl = document.getElementById('usernameInput');
+  const serverEl   = document.getElementById('serverInput');
+  const errEl      = document.getElementById('loginErr');
+  const username   = usernameEl.value.trim();
+  const serverUrl  = serverEl.value.trim();
+
+  if (!username) { showErr('Please enter a display name.'); return; }
+  if (!serverUrl) { showErr('Please enter a server URL.'); return; }
+
+  errEl.style.display = 'none';
+
+  // Generate ECDH key pair
+  await Crypto.generateKeyPair();
+  myPublicKey = await Crypto.exportPublicKey();
+  myUsername  = username;
+
+  try {
+    ws = new WebSocket(serverUrl);
+  } catch(e) {
+    showErr('Invalid server URL.'); return;
+  }
+
+  setConnBar('connecting', 'Connecting to server…');
+
+  ws.onopen = () => {
+    setConnBar('connected', '🔒 Connected & encrypted');
+    ws.send(JSON.stringify({ type:'join', username, publicKey: myPublicKey }));
+  };
+
+  ws.onmessage = async (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    await handleMessage(msg);
+  };
+
+  ws.onerror = () => {
+    setConnBar('error', 'Connection error — is the server running?');
+    showErr('Could not connect. Make sure the server is running at ' + serverUrl);
+  };
+
+  ws.onclose = () => {
+    setConnBar('error', 'Disconnected from server');
+  };
+}
+
+function showErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function setConnBar(state, msg) {
+  const bar = document.getElementById('connBar');
+  bar.className = 'conn-bar ' + state;
+  document.getElementById('connMsg').textContent = msg;
+  bar.style.display = 'flex';
+  if (state === 'connected') setTimeout(() => { bar.style.display = 'none'; }, 5000);
+}
+
+// ═══════════════════════════════════════════════
+//  MESSAGE HANDLER
+// ═══════════════════════════════════════════════
+async function handleMessage(msg) {
+  switch (msg.type) {
+
+    case 'joined': {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appShell').classList.add('visible');
+      document.getElementById('myName').textContent = myUsername;
+      document.getElementById('myAvatar').textContent = initials(myUsername);
+
+      // Cache keys for existing users
+      for (const u of msg.users) {
+        if (u.username !== myUsername) {
+          onlineUsers[u.username] = u.publicKey;
+          Crypto.publicKeyCache[u.username] = u.publicKey;
+          await Crypto.getSharedKey(u.username, u.publicKey);
+        }
+      }
+      renderUserList();
+      break;
+    }
+
+    case 'user_joined': {
+      if (msg.username !== myUsername) {
+        onlineUsers[msg.username] = msg.publicKey;
+        Crypto.publicKeyCache[msg.username] = msg.publicKey;
+        await Crypto.getSharedKey(msg.username, msg.publicKey);
+        addSysMsg(msg.username + ' joined 🔐');
+      }
+      renderUserList();
+      break;
+    }
+
+    case 'user_left': {
+      delete onlineUsers[msg.username];
+      renderUserList();
+      addSysMsg(msg.username + ' left');
+      if (activeChat === msg.username) {
+        document.getElementById('chatDot').className = 'sdot off';
+        document.getElementById('chatStatus').textContent = 'Offline';
+      }
+      break;
+    }
+
+    case 'message': {
+      const { from, encryptedPayload, iv } = msg;
+      try {
+        const text = await Crypto.decrypt(from, encryptedPayload, iv);
+        addMessage(from, text, timestamp(), false);
+        // Notify if not active chat
+        if (activeChat !== from) {
+          bumpUnread(from);
+        }
+      } catch(e) {
+        console.warn('Decrypt failed:', e);
+      }
+      break;
+    }
+
+    case 'delivered': {
+      // Mark last sent message as delivered
+      const rows = document.querySelectorAll('#msgsArea .row.me');
+      if (rows.length) {
+        const last = rows[rows.length - 1].querySelector('.tick');
+        if (last) last.textContent = '✓✓';
+      }
+      break;
+    }
+
+    case 'typing': {
+      const { from, isTyping } = msg;
+      if (activeChat === from) {
+        showTyping(isTyping);
+      }
+      break;
+    }
+
+    case 'error': {
+      showErr(msg.message || 'Server error');
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('appShell').classList.remove('visible');
+      break;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER USER LIST
+// ═══════════════════════════════════════════════
+let unreadCounts = {};
+
+function renderUserList() {
+  const list = document.getElementById('userList');
+  const users = Object.keys(onlineUsers).filter(u => u !== myUsername);
+
+  if (users.length === 0) {
+    list.innerHTML = `<div class="sec-label">ONLINE</div>
+      <div style="padding:16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">
+        Waiting for others to join…
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `<div class="sec-label">ONLINE — ${users.length}</div>`;
+  users.forEach(u => {
+    const av = avColor(u);
+    const ini = initials(u);
+    const unread = unreadCounts[u] || 0;
+    const isActive = u === activeChat;
+    const lastMsg = chatHistories[u]?.slice(-1)[0];
+    const preview = lastMsg
+      ? (lastMsg.isMe ? 'You: ' : '') + lastMsg.text.substring(0,28) + (lastMsg.text.length > 28 ? '…' : '')
+      : '🔒 Keys exchanged';
+
+    const el = document.createElement('div');
+    el.className = 'contact' + (isActive ? ' active' : '');
+    el.dataset.username = u;
+    el.innerHTML = `
+      <div class="av">
+        <div class="av-img ${av}">${ini}</div>
+        <div class="sdot on"></div>
+      </div>
+      <div class="c-info">
+        <div class="c-name">${escHtml(u)}</div>
+        <div class="c-prev">${escHtml(preview)}</div>
+      </div>
+      <div class="c-meta">
+        <div class="c-time">${lastMsg ? lastMsg.time : 'now'}</div>
+        ${unread ? `<div class="unread">${unread}</div>` : ''}
+      </div>`;
+    el.onclick = () => openChat(u);
+    list.appendChild(el);
+  });
+}
+
+function bumpUnread(username) {
+  if (activeChat !== username) {
+    unreadCounts[username] = (unreadCounts[username] || 0) + 1;
+    renderUserList();
+  }
+}
+
+function filterUsers(q) {
+  document.querySelectorAll('.contact').forEach(el => {
+    el.style.display = el.dataset.username.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  OPEN CHAT
+// ═══════════════════════════════════════════════
+async function openChat(username) {
+  activeChat = username;
+  unreadCounts[username] = 0;
+
+  const av = avColor(username);
+  const ini = initials(username);
+
+  // Update header
+  document.getElementById('chatAv').textContent = ini;
+  document.getElementById('chatAv').className = `av-img ${av}`;
+  document.getElementById('chatName').textContent = username;
+  document.getElementById('chatDot').className = 'sdot on';
+  document.getElementById('chatStatus').textContent = 'Online · E2E Encrypted';
+
+  // Fingerprint
+  const fp = await Crypto.fingerprint(username);
+  document.getElementById('fpText').textContent = fp;
+
+  // Show chat wrap
+  document.getElementById('noChat').style.display = 'none';
+  const wrap = document.getElementById('activeChatWrap');
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
+  wrap.style.flex = '1';
+  wrap.style.overflow = 'hidden';
+
+  // Render history
+  renderHistory(username);
+  renderUserList();
+  document.getElementById('msgInput').focus();
+}
+
+function renderHistory(username) {
+  const area = document.getElementById('msgsArea');
+  area.innerHTML = `<div class="sys">🔒 Messages are end-to-end encrypted. Only you and ${escHtml(username)} can read them.</div>
+    <div class="date-div"><span>TODAY</span></div>`;
+
+  const history = chatHistories[username] || [];
+  history.forEach(m => appendBubble(area, m.isMe ? myUsername : username, m.text, m.time, m.isMe));
+  area.scrollTop = area.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════
+//  SEND / RECEIVE MESSAGES
+// ═══════════════════════════════════════════════
+async function sendMsg() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || !activeChat || !ws) return;
+
+  try {
+    const { encryptedPayload, iv } = await Crypto.encrypt(activeChat, text);
+    ws.send(JSON.stringify({
+      type: 'message',
+      to: activeChat,
+      encryptedPayload,
+      iv,
+      fromPublicKey: myPublicKey,
+    }));
+
+    // Store + render locally
+    if (!chatHistories[activeChat]) chatHistories[activeChat] = [];
+    const t = timestamp();
+    chatHistories[activeChat].push({ text, time: t, isMe: true });
+
+    const area = document.getElementById('msgsArea');
+    appendBubble(area, myUsername, text, t, true);
+    area.scrollTop = area.scrollHeight;
+
+    input.value = '';
+    input.style.height = 'auto';
+    renderUserList();
+
+    // Reset typing
+    isTypingSent = false;
+    if (ws) ws.send(JSON.stringify({ type:'typing', to:activeChat, isTyping:false }));
+  } catch(e) {
+    console.error('Encrypt/send error:', e);
+  }
+}
+
+function addMessage(from, text, time, isMe) {
+  if (!chatHistories[from]) chatHistories[from] = [];
+  chatHistories[from].push({ text, time, isMe });
+
+  if (activeChat === from) {
+    const area = document.getElementById('msgsArea');
+    appendBubble(area, from, text, time, false);
+    area.scrollTop = area.scrollHeight;
+    renderUserList();
+  }
+}
+
+function appendBubble(area, from, text, time, isMe) {
+  const row = document.createElement('div');
+  row.className = 'row ' + (isMe ? 'me' : 'them');
+  row.innerHTML = `<div class="bubble">${escHtml(text)}
+    <div class="msg-time">${time}${isMe ? ' <span class="tick">✓</span>' : ''}</div>
+  </div>`;
+  area.appendChild(row);
+}
+
+function addSysMsg(text) {
+  if (!document.getElementById('activeChatWrap').style.display || document.getElementById('activeChatWrap').style.display === 'none') return;
+  const area = document.getElementById('msgsArea');
+  const el = document.createElement('div');
+  el.className = 'sys';
+  el.textContent = text;
+  area.appendChild(el);
+  area.scrollTop = area.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════
+//  TYPING INDICATOR
+// ═══════════════════════════════════════════════
+function onTyping() {
+  if (!activeChat || !ws) return;
+  if (!isTypingSent) {
+    isTypingSent = true;
+    ws.send(JSON.stringify({ type:'typing', to:activeChat, isTyping:true }));
+  }
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    isTypingSent = false;
+    if (ws) ws.send(JSON.stringify({ type:'typing', to:activeChat, isTyping:false }));
+  }, 2000);
+}
+
+function showTyping(isTyping) {
+  const el = document.getElementById('chatStatus');
+  if (isTyping) {
+    el.innerHTML = `<span class="typing-dots"><span class="td"></span><span class="td"></span><span class="td"></span></span> typing…`;
+  } else {
+    el.textContent = 'Online · E2E Encrypted';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════
+function onKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function copyMyKey() {
+  const pub = await Crypto.exportPublicKey();
+  navigator.clipboard.writeText(pub).then(() => alert('Public key copied to clipboard!'));
+}
+
+async function showFingerprint() {
+  if (!activeChat) return;
+  const fp = await Crypto.fingerprint(activeChat);
+  alert(`Key Fingerprint with ${activeChat}:\n\n${fp}\n\nShare this with ${activeChat} out-of-band to verify the session is not intercepted.`);
+}
+
+function disconnect() {
+  if (ws) ws.close();
+  location.reload();
+}
+</script>
+</body>
+</html>

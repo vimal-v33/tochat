@@ -1,0 +1,13 @@
+{
+  "name": "tochat-server",
+  "version": "1.0.0",
+  "description": "ToChat — Real-time E2E encrypted chat server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "npx nodemon server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
