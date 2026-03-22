@@ -185,6 +185,215 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .conn-bar.connected .conn-dot{background:var(--teal);}
 .conn-bar.error .conn-dot{background:#ff7070;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 640px) {
+  /* Login box full width on mobile */
+  .login-box{width:92vw;padding:28px 20px;}
+
+  /* App shell stacked */
+  #appShell{flex-direction:column;}
+
+  /* Sidebar — full screen contacts view */
+  .sidebar{
+    width:100%;min-width:unset;
+    height:100%;
+    position:fixed;inset:0;
+    z-index:100;
+    transition:transform .3s ease;
+  }
+  .sidebar.hidden{transform:translateX(-100%);}
+
+  /* Chat panel full screen */
+  .chat{width:100%;}
+
+  /* Back button in chat header */
+  .back-btn{
+    display:flex!important;
+    width:32px;height:32px;
+    border-radius:8px;border:1px solid var(--border);
+    background:transparent;color:var(--text-2);
+    align-items:center;justify-content:center;
+    font-size:16px;cursor:pointer;flex-shrink:0;
+    transition:all .15s;
+  }
+  .back-btn:hover{background:rgba(0,201,176,.1);color:var(--teal);}
+
+  /* Hide enc pill on small screens */
+  .enc-pill{display:none;}
+
+  /* Bigger bubbles */
+  .bubble{max-width:82%;}
+
+  /* Input zone tighter */
+  .input-zone{padding:8px 10px;gap:6px;}
+
+  /* Bigger touch targets */
+  .send-btn,.attach-btn{width:42px;height:42px;}
+
+  /* fp bar smaller */
+  .fp-bar{font-size:8px;padding:4px 10px;}
+}
+
+/* Back button hidden on desktop */
+.back-btn{display:none;}
+</style>
+</head>
+<body>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">💬</div>
+    <div class="login-title">ToChat</div>
+    <div class="login-sub">🔐 REAL-TIME · E2E ENCRYPTED · FILE SHARE</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="field-label">Your display name</div>
+    <input class="login-input" id="usernameInput" placeholder="e.g. Vimal, Aria…" maxlength="24" autocomplete="off">
+    <div class="field-label">Server URL</div>
+    <input class="login-input" id="serverInput" value="" autocomplete="off">
+    <button class="login-btn" onclick="connect()">Generate Keys & Connect →</button>
+    <div class="login-note">🔑 ECDH keys generated in your browser.<br>Server never sees plaintext.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="brand">
+        <div class="brand-logo">💬</div>
+        <div>
+          <div class="brand-name">ToChat</div>
+          <span class="brand-enc">🔒 E2E ENCRYPTED</span>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <span class="search-ico">⌕</span>
+        <input type="text" id="searchBox" placeholder="Search users…" oninput="filterUsers(this.value)">
+      </div>
+    </div>
+    <div class="contacts" id="userList">
+      <div class="sec-label">ONLINE</div>
+      <div style="padding:16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-3);">Waiting for others…</div>
+    </div>
+    <div class="sb-foot">
+      <div class="me-av" id="myAvatar">?</div>
+      <div class="me-inf">
+        <div class="me-name" id="myName">—</div>
+        <div class="me-status">Encrypted</div>
+      </div>
+      <button class="ib" title="Copy public key" onclick="copyMyKey()">🔑</button>
+      <button class="ib" title="Disconnect" onclick="disconnect()">⏏️</button>
+    </div>
+  </aside>
+
+  <main class="chat" id="chatMain">
+    <div id="connBar" class="conn-bar connecting">
+      <div class="conn-dot"></div><span id="connMsg">Connecting…</span>
+    </div>
+    <div class="no-chat" id="noChat">
+      <div class="no-chat-icon">🔐</div>
+      <div>Select a user to start<br>an encrypted conversation</div>
+    </div>
+    <div id="activeChatWrap" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div class="chat-head">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="av">
+          <div class="av-img av-t" id="chatAv">?</div>
+          <div class="sdot on" id="chatDot"></div>
+        </div>
+        <div class="ch-info">
+          <div class="ch-name" id="chatName">—</div>
+          <div class="ch-status" id="chatStatus">Online</div>
+        </div>
+        <div class="head-actions">
+          <div class="enc-pill"><div class="enc-dot"></div>E2E ENCRYPTED</div>
+          <button class="ib" onclick="showFingerprint()">🛡️</button>
+        </div>
+      </div>
+      <div class="fp-bar">🔑 Fingerprint: <b id="fpText">—</b></div>
+      <div class="msgs" id="msgsArea"></div>
+      <div c@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(0,201,176,.2);}50%{box-shadow:0 0 14px rgba(0,201,176,.4);}}
+.enc-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+.fp-bar{padding:6px 18px;background:rgba(0,201,176,.04);border-bottom:1px solid rgba(0,201,176,.12);font-family:'Space Mono',monospace;font-size:9.5px;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:7px;}
+.fp-bar b{color:var(--teal-dim);}
+.no-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-3);font-family:'Space Mono',monospace;font-size:12px;text-align:center;}
+.no-chat-icon{font-size:48px;opacity:.25;}
+
+/* MESSAGES */
+.msgs{flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:3px;}
+.msgs::-webkit-scrollbar{width:4px;}
+.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.date-div{text-align:center;margin:10px 0;position:relative;}
+.date-div::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border);}
+.date-div span{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--text-3);background:var(--bg-deep);padding:0 10px;position:relative;letter-spacing:1px;}
+.sys{align-self:center;font-family:'Space Mono',monospace;font-size:9.5px;color:var(--text-3);background:rgba(0,201,176,.05);border:1px solid rgba(0,201,176,.1);border-radius:20px;padding:5px 13px;margin:5px 0;text-align:center;}
+.row{display:flex;margin-bottom:1px;animation:mi .22s ease;}
+@keyframes mi{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+.row.me{justify-content:flex-end;}
+.row.them{justify-content:flex-start;}
+.bubble{max-width:66%;padding:9px 13px;font-size:13.5px;line-height:1.55;word-break:break-word;position:relative;}
+.row.me .bubble{background:var(--bubble-me);border-radius:16px 16px 4px 16px;color:#d8f0ec;}
+.row.them .bubble{background:var(--bubble-them);border:1px solid var(--border);border-radius:16px 16px 16px 4px;color:var(--text-1);}
+.msg-time{font-family:'Space Mono',monospace;font-size:9px;margin-top:4px;display:flex;align-items:center;gap:3px;}
+.row.me .msg-time{color:rgba(180,230,220,.45);justify-content:flex-end;}
+.row.them .msg-time{color:var(--text-3);}
+.tick{font-size:10px;}
+.tick.r{color:var(--teal);}
+
+/* IMAGE BUBBLE */
+.img-bubble{max-width:260px;border-radius:12px;overflow:hidden;cursor:pointer;}
+.img-bubble img{width:100%;display:block;border-radius:12px;}
+.file-bubble{display:flex;align-items:center;gap:10px;padding:10px 13px;background:rgba(0,201,176,.08);border:1px solid rgba(0,201,176,.2);border-radius:12px;cursor:pointer;text-decoration:none;color:var(--text-1);}
+.file-icon{font-size:22px;}
+.file-info{flex:1;min-width:0;}
+.file-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-dl{font-size:10px;color:var(--teal);font-family:'Space Mono',monospace;}
+
+/* UPLOAD PROGRESS */
+.upload-progress{
+  align-self:flex-end;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:12px;padding:10px 14px;
+  font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);
+  display:flex;align-items:center;gap:8px;max-width:66%;
+}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;flex:1;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--blue));border-radius:2px;transition:width .3s;}
+
+/* INPUT */
+.input-zone{padding:12px 18px;background:var(--bg-panel);border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:9px;}
+.inp-wrap{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:13px;display:flex;align-items:flex-end;padding:8px 11px;gap:7px;transition:border-color .2s,box-shadow .2s;}
+.inp-wrap:focus-within{border-color:var(--teal-dim);box-shadow:0 0 0 2px rgba(0,201,176,.1);}
+.msg-inp{flex:1;background:transparent;border:none;outline:none;color:var(--text-1);font-family:'Syne',sans-serif;font-size:13.5px;resize:none;max-height:110px;min-height:22px;line-height:1.5;}
+.msg-inp::placeholder{color:var(--text-3);}
+.send-btn{width:38px;height:38px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 4px 16px rgba(0,201,176,.3);transition:transform .14s,box-shadow .14s;}
+.send-btn:hover{transform:scale(1.06);box-shadow:0 6px 22px rgba(0,201,176,.45);}
+.send-btn:active{transform:scale(.96);}
+.attach-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .15s;}
+.attach-btn:hover{background:rgba(0,201,176,.1);border-color:var(--teal-dim);color:var(--teal);}
+
+/* IMAGE LIGHTBOX */
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9000;display:none;align-items:center;justify-content:center;cursor:zoom-out;}
+#lightbox img{max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 0 60px rgba(0,201,176,.2);}
+#lightbox.open{display:flex;}
+
+.conn-bar{padding:5px 12px;font-family:'Space Mono',monospace;font-size:10px;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .3s;}
+.conn-bar.connecting{background:rgba(245,158,11,.1);color:#f59e0b;border-bottom:1px solid rgba(245,158,11,.2);}
+.conn-bar.connected{background:rgba(0,232,162,.07);color:var(--teal);border-bottom:1px solid rgba(0,232,162,.15);}
+.conn-bar.error{background:rgba(255,60,60,.1);color:#ff7070;border-bottom:1px solid rgba(255,60,60,.2);}
+.conn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.conn-bar.connecting .conn-dot{background:#f59e0b;animation:pulse .8s infinite;}
+.conn-bar.connected .conn-dot{background:var(--teal);}
+.conn-bar.error .conn-dot{background:#ff7070;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 </style>
 </head>
 <body>
